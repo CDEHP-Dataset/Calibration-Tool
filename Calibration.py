@@ -50,12 +50,12 @@ class StereoCalibration(object):
         
         #双目相机内外参数，用matlab获得
         mtxl = np.array([[613.9202270507812,0,429.2717590332031],[0,613.9828491210938,247.7591552734375],[0,0,1]])
-        distl = np.array([0,0,0,0,0])
+        distl = np.array([0,0,0,0,0], dtype=np.float64)  #须为浮点型，否则 cv2.stereoCalibrate 报错
         mtxr = np.array([[1745.201222078004,0,608.7036499773853],[0,1745.160460801634,378.7029722868696],[0,0,1]])
         distr = np.array([-0.1078074878385094,-1.398091060704599, -0.001072933462189642, 0.001107858892628408, 8.071401568419741])
         
         # 读取matlab所得到的相机坐标
-        with open(r'435i_reprojected.txt') as f:  
+        with open(r'd435i_reprojected.txt') as f:
             data = f.read()
         image_positionl = change_txt_to_array(data)
         
@@ -70,12 +70,13 @@ class StereoCalibration(object):
         
         world_position = []
         
-        #标定所用的图像数量，全部使用则 range(len(image_positionr))
-        for ii in range(50):
-            world_position.append(world_point*38)
-        
+        #标定所用的图像数量，使用全部图像（102组），与数据集发布的 R.npy / T.npy 一致
+        num_images = len(image_positionr)
+        for ii in range(num_images):
+            world_position.append(world_point*38)  #标定板方格边长 38 mm
+
         ##双目标定
-        self.stereo_calibrate( world_position ,image_positionl[:50], image_positionr[:50] , mtxl, distl, mtxr, distr, (1280,800))
+        self.stereo_calibrate( world_position ,image_positionl[:num_images], image_positionr[:num_images] , mtxl, distl, mtxr, distr, (1280,800))
             
     def stereo_calibrate( self ,  objpoints ,imgpoints_l , imgpoints_r , M1, d1, M2, d2, dims):
         flags = 0
@@ -114,10 +115,9 @@ class stereoCameral(object):
 if __name__ == '__main__':
 #     calibration_photo()
     biaoding = StereoCalibration()
+    biaoding.calibration_photo()  #必须先完成标定，再读取并保存结果
     config = stereoCameral()
     np.save(r"m_l",config.cam_matrix_left)
     np.save(r"m_r",config.cam_matrix_right)
     np.save(r"R",config.R)
     np.save(r"T",config.T)
-
-    biaoding.calibration_photo()
